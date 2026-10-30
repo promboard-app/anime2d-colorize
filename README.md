@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 | lastUpdated: 2026-10-31 -->
+<!-- version: 1.0.1 | lastUpdated: 2026-10-31 -->
 # 2D 애니메이션 팩 — 선화 채색 (AniDoc)
 
 [English](README.en.md)
@@ -40,10 +40,10 @@ PromBoard 커뮤니티 플러그인입니다. 선화 영상(또는 컬러 영상
 | 나오는 것 | 칠한 영상(512×320 안에 맞춤, 입력 비율 · fps 그대로, 소리 없음)과 그 프레임(영상이 64프레임 이하일 때) |
 | 받을 용량 | 모델 10.6GB + 파이썬 패키지(torch 포함, 설치하면 약 6.6GB). 처음 한 번 |
 | 그래픽카드 메모리 | NVIDIA 8GB 이상. 12GB 카드에서 최고 6.6GB 를 썼고, 7GB 로 묶어도 돌았습니다. 16GB 보다 작으면 쉬는 부품을 컴퓨터 메모리로 내려 두고 돕니다 |
-| 걸리는 시간 | 14프레임: 첫 실행 약 1분 30초(모델 읽기 포함), 다음부터 약 21초. 98프레임 약 2분 40초, 240프레임 약 6분 30초 (RTX 4070 SUPER 12GB) |
+| 걸리는 시간 | 14프레임: 첫 실행 약 1분 30초(모델 읽기 포함), 다음부터 약 21초. 98프레임 약 3분, 240프레임 약 6분 50초 (RTX 4070 SUPER 12GB) |
 | 길이 | 240프레임까지(24fps 영상이면 10초). 첫 14프레임을 칠한 뒤 이 PC 에서 시간 안에 못 끝날 것 같으면 바로 멈추고 알립니다 |
 
-- AniDoc 은 한 번에 14프레임을 칠합니다. 긴 영상은 14프레임씩 나눠 칠하고 잇습니다. 묶음이 바뀌는 곳에서 색이 살짝 달라질 수 있습니다.
+- AniDoc 은 한 번에 14프레임을 칠합니다. 긴 영상은 14프레임씩 나눠 칠하고 잇습니다. 이웃 묶음은 1프레임을 겹쳐 칠하고 그 프레임은 두 결과를 반씩 섞어, 묶음이 바뀌는 곳의 색 차이를 줄입니다. 그래도 그곳에서 작은 부분(예: 머리끈 · 어깨 그늘)의 색이 한두 프레임에 걸쳐 살짝 바뀔 수 있습니다.
 - 가로 16:10(512×320)이 가장 잘 됩니다. 비율이 다른 영상은 흰 여백을 넣어 칠한 뒤 여백을 잘라 돌려줍니다.
 - 캐릭터 설정화는 칠할 캐릭터가 정면으로 크게 보이는, 평면 채색 그림이 좋습니다. 선화와 설정화의 캐릭터가 같아야 색이 맞습니다.
 
@@ -64,7 +64,7 @@ PromBoard 커뮤니티 플러그인입니다. 선화 영상(또는 컬러 영상
 
 | 카드 | 라이선스 | 판매 · 광고 · 유료 서비스(상업 이용) |
 |---|---|---|
-| 프레임 사이 채우기 | Apache-2.0 · MIT ([저장소](https://github.com/promboard-app/anime2d)) | 가능 |
+| 프레임 사이 채우기 | Apache-2.0 · MIT ([저장소](https://github.com/promboard-app/anime2d)) | 가능 (AnimeInterp 모델 파일은 라이선스 표기가 없음 — [그 저장소 README](https://github.com/promboard-app/anime2d)) |
 | **선화 채색 (이 카드)** | 점 따라가기 CoTracker [CC-BY-NC-4.0](https://github.com/facebookresearch/co-tracker/blob/main/LICENSE.md) · 점 찾기 SuperPoint [Magic Leap 비상업 라이선스](https://github.com/magicleap/SuperPointPretrainedNetwork/blob/master/LICENSE) · 채색 모델 [Stability AI Community License](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt/blob/9e43909513c6714f1bc78bcb44d96e733cd242aa/LICENSE.md) | **불가** (비상업) |
 | 키프레임으로 채색 영상 | 각 저장소 README | 각 저장소 README |
 

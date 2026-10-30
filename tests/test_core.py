@@ -21,12 +21,39 @@ def test_chunk14_short_video_repeats_last_frame():
     assert main.stitch([[f"c{x}" for x in p] for p in parts], 5) == ["c0", "c1", "c2", "c3", "c4"]
 
 
+def _same(a, b, w):
+    assert a == b  # 겹친 자리에는 같은 프레임이 들어 있어야 한다
+    return a
+
+
 def test_chunk14_exact_and_remainder():
     assert main.chunk14(list(range(14))) == [list(range(14))]
     parts = main.chunk14(list(range(30)))
+    assert [p[0] for p in parts] == [0, 13, 26]  # 다음 묶음은 앞 묶음 끝 프레임부터(1프레임 겹침)
     assert [len(p) for p in parts] == [14, 14, 14]
-    assert parts[2] == [28, 29] + [29] * 12
-    assert main.stitch(parts, 30) == list(range(30))
+    assert parts[2] == [26, 27, 28, 29] + [29] * 10
+    assert main.stitch(parts, 30, blend=_same) == list(range(30))
+
+
+def test_chunk14_overlap_covers_every_length():
+    for n in range(1, 60):
+        parts = main.chunk14(list(range(n)))
+        assert main.stitch(parts, n, blend=_same) == list(range(n))
+        assert len(parts) == 1 if n <= 14 else len(parts) == -(-(n - 1) // 13)
+
+
+def test_stitch_blends_overlapped_frame_half_and_half():
+    parts = [[("a", i) for i in range(14)], [("b", i) for i in range(13, 27)]]
+    out = main.stitch(parts, 27, blend=lambda x, y, w: ("mix", x, y, w))
+    assert out[12] == ("a", 12) and out[14] == ("b", 14)
+    assert out[13] == ("mix", ("a", 13), ("b", 13), 0.5)
+    assert len(out) == 27
+
+
+def test_chunk14_without_overlap():
+    parts = main.chunk14(list(range(30)), overlap=0)
+    assert [p[0] for p in parts] == [0, 14, 28]
+    assert main.stitch(parts, 30, overlap=0) == list(range(30))
 
 
 def test_chunk14_single_frame():
@@ -120,3 +147,32 @@ def test_nodes_matches_manifest():
     with open(os.path.join(root, "manifest.json"), encoding="utf-8") as fh:
         manifest = json.load(fh)
     assert set(main.NODES) == {n["id"] for n in manifest["nodes"]}
+
+
+# ── 1.0.1 코드 검토 ──────────────────────────────────────────────────────────
+
+
+def test_time_budget_adds_load_only_when_cold():
+    assert main.time_budget(cold=True) == 900 + 180
+    assert main.time_budget(cold=False) == 900
+    assert main.over_budget(elapsed=100, first_chunk_sec=50, chunks=10, budget=900) is None  # 100 + 50*9*1.1 = 595
+    assert main.over_budget(elapsed=100, first_chunk_sec=90, chunks=10, budget=900) == pytest.approx(991)
+
+
+def test_line_to_sketch_judges_dark_background_inside_box_only():
+    np = pytest.importorskip("numpy")
+    gray = np.full((10, 20), 255, dtype=np.uint8)  # 흰 여백(가로 20 중 가운데 10칸이 그림)
+    gray[:, 5:15] = 0  # 검은 바탕
+    gray[4, 9] = 255  # 흰 선
+    box = (10, 10, 5, 0)
+    out = main.line_to_sketch(gray, box)
+    assert out[4, 9] == 0  # 흰 선 → 검은 선
+    assert out[0, 6] == 255  # 검은 바탕 → 흰 바탕
+    assert (out[:, :5] == 255).all() and (out[:, 15:] == 255).all()  # 여백은 흰색 그대로
+    # 여백까지 넣어 판단하면(옛 동작) 평균이 128 을 넘어 뒤집지 않는다 — 그래서 box 가 필요하다
+    assert gray.mean() >= 128
+
+
+def test_ram_message_is_plain_korean():
+    msg = main.ram_message()
+    assert msg.startswith("컴퓨터 메모리(RAM)가 모자랍니다.") and "Error" not in msg

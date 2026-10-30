@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 | lastUpdated: 2026-10-31 -->
+<!-- version: 1.0.1 | lastUpdated: 2026-10-31 -->
 # 2D Animation Pack — Line Art Colorization (AniDoc)
 
 [한국어](README.md)
@@ -40,10 +40,10 @@ The app after running the example workflow. The left panel shows the example car
 | Outputs | Colored video (fit inside 512×320, keeps the input aspect ratio and fps, no audio) and its frames (when the video has 64 frames or fewer) |
 | Download | Models 10.6 GB + Python packages (with torch, about 6.6 GB installed). First time only |
 | GPU memory | NVIDIA, 8 GB or more. On a 12 GB card it peaked at 6.6 GB and still ran when capped at 7 GB. Below 16 GB, idle parts wait in system RAM |
-| Time | 14 frames: about 1 min 30 s on the first run (includes loading the models), then about 21 s. 98 frames about 2 min 40 s, 240 frames about 6 min 30 s (RTX 4070 SUPER 12 GB) |
+| Time | 14 frames: about 1 min 30 s on the first run (includes loading the models), then about 21 s. 98 frames about 3 min, 240 frames about 6 min 50 s (RTX 4070 SUPER 12 GB) |
 | Length | Up to 240 frames (10 seconds at 24 fps). After the first 14 frames, it stops right away and tells you if this PC cannot finish in time |
 
-- AniDoc colors 14 frames at a time. Longer videos are colored 14 frames at a time and joined. Colors can shift slightly where one batch meets the next.
+- AniDoc colors 14 frames at a time. Longer videos are colored 14 frames at a time and joined. Neighboring batches overlap by one frame, and that frame is a half-and-half blend of both results to soften the change where batches meet. Small areas (a hair tie, a shoulder shadow) can still shift color slightly over a frame or two there.
 - 16:10 landscape (512×320) works best. Other aspect ratios are padded with white, colored, and the padding is cropped off again.
 - The best design sheet shows the character large, from the front, with flat colors. The line art and the sheet must show the same character for the colors to match.
 
@@ -64,7 +64,7 @@ The app after running the example workflow. The left panel shows the example car
 
 | Card | License | Selling, ads, paid services (commercial use) |
 |---|---|---|
-| Fill Between Frames | Apache-2.0 · MIT ([repository](https://github.com/promboard-app/anime2d)) | Yes |
+| Fill Between Frames | Apache-2.0 · MIT ([repository](https://github.com/promboard-app/anime2d)) | Yes (the AnimeInterp model file has no stated license — see [that repository's README](https://github.com/promboard-app/anime2d)) |
 | **Line Art Colorization (this card)** | Point tracking CoTracker [CC-BY-NC-4.0](https://github.com/facebookresearch/co-tracker/blob/main/LICENSE.md) · keypoints SuperPoint [Magic Leap non-commercial license](https://github.com/magicleap/SuperPointPretrainedNetwork/blob/master/LICENSE) · coloring model [Stability AI Community License](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt/blob/9e43909513c6714f1bc78bcb44d96e733cd242aa/LICENSE.md) | **No** (non-commercial) |
 | Colored Video from Keyframes | See that repository's README | See that repository's README |
 

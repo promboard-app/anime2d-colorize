@@ -3,7 +3,8 @@
 노드 하나(colorize)가 색칠할 영상과 캐릭터 설정화 1장을 받아, 설정화의 색으로 칠한 영상(512×320 안에 맞춤)과 그 프레임을 낸다.
   선화 영상(source=line)   흰 바탕 검은 선 영상을 그대로 칠한다 — 공식 코드의 선화 추출을 건너뛴다(저자 답변, AniDoc 이슈 #17).
   컬러 영상(source=color)  공식 코드처럼 프레임마다 선화를 뽑아(informative-drawings sk_model.pth) 칠한다.
-AniDoc 은 정확히 14프레임을 칠한다. 긴 영상은 14프레임씩 나눠 칠하고 잇는다(마지막 묶음은 끝 프레임을 반복해 채우고 결과에서 뺀다).
+AniDoc 은 정확히 14프레임을 칠한다. 긴 영상은 14프레임씩 나눠 칠하고 잇는다(이웃 묶음은 1프레임을 겹쳐 칠해 두 결과를 섞고,
+마지막 묶음은 끝 프레임을 반복해 채우고 결과에서 뺀다). 모든 묶음은 같은 시드로 칠한다.
 묶음마다 공식 추론(scripts_infer/anidoc_inference.sh: --all_sketch --matching --tracking --max_point 10)과 같은 순서로 조건을 만든다:
   설정화와 첫 선화의 점 맞추기(SuperPoint + LightGlue) → 그 점을 14프레임 동안 따라가기(CoTracker2) → 점 지도 + 설정화 + 선화 → ControlNet.
 생성: AniDocPipeline(SVD img2vid-xt 미세조정, fp16, 25단계, 공식 값 motion_bucket_id 127 · fps 7 · noise_aug 0.02 · decode_chunk 8).
@@ -32,11 +33,13 @@ LIGHTGLUE = "lightglue/superpoint_lightglue.pth"
 
 WIDTH, HEIGHT = 512, 320
 CHUNK = 14  # AniDoc 이 한 번에 칠하는 프레임 수
-MAX_FRAMES = 240  # 길이 상한(24fps 10초) — RTX 4070 SUPER 12GB 실측 14프레임 약 21초 → 약 6분. 2배 느린 카드까지 900초 안(더 느리면 첫 묶음 뒤 어림으로 멈춘다)
+OVERLAP = 1  # 이웃 묶음이 겹쳐 칠하는 프레임 수 — 겹친 프레임은 두 결과를 섞어 묶음 경계의 색 튐을 줄인다
+MAX_FRAMES = 240  # 길이 상한(24fps 10초) — RTX 4070 SUPER 12GB 실측 1묶음 약 21.5초, 240프레임 19묶음 410초. 2배 느린 카드까지 900초 안(더 느리면 첫 묶음 뒤 어림으로 멈춘다)
 MAX_FRAME_OUTPUTS = 64  # 여러 장 출력 포트 상한(02 §3)
 NEED_MB = 8192  # 실측: 오프로드로 최고 할당 6.6GB, 7GB 로 묶어도 돈다 — 메모리 부족 안내에 쓴다
 FULL_GPU_MB = 15360  # 이보다 큰 그래픽카드는 오프로드 없이 통째로 올린다(최고 할당 8.9GB — 12GB 에서는 넘쳐 오히려 느렸다)
-TIME_BUDGET_SEC = 1050  # PromBoard 실행기 노드 한 번 900초 + 적재 몫 180초(조금 남긴다)
+NODE_BUDGET_SEC = 900  # PromBoard 실행기 노드 한 번 상한(server runner/run.ts PLUGIN_NODE_BUDGET_SEC)
+LOAD_BUDGET_SEC = 180  # 사이드카를 새로 띄운 실행에만 더해지는 적재 몫(server localai/timeouts.ts — 떠 있으면 0)
 STEPS = 25
 DEVICE = "cuda"  # 그래픽카드 전용(ctx.device 가 cuda 가 아니면 모델 전에 멈춘다). 시험대만 cpu 로 바꾼다
 LINE_THRESHOLD = 200  # 공식 코드의 선화 양자화 기준(sketch > 200 → 흰 바탕)
@@ -48,6 +51,7 @@ CARD_REFERENCE = "예제 — 캐릭터 설정화"
 WORKFLOW_NAME = "이어진 선화 두 장 → 중간 프레임 → 선화 채색"
 
 _CACHE = {"pipe": None, "offload": None, "aux": None}
+_STATE = {"loaded_once": False}  # 이 사이드카가 모델을 한 번이라도 불렀나(메모리 부족으로 캐시를 비워도 참으로 남는다)
 
 
 # ── 모델 없이 시험하는 순수 함수 ────────────────────────────────────────────
@@ -89,19 +93,45 @@ def _num(x):
     return f"{x:.1f}".rstrip("0").rstrip(".")
 
 
-def chunk14(frames, size=CHUNK):
-    """프레임 목록 → size 장씩 묶은 목록. 마지막 묶음이 모자라면 끝 프레임을 반복해 채운다."""
+def time_budget(cold):
+    """이번 실행이 쓸 수 있는 시간(초). 사이드카를 새로 띄운 첫 실행만 적재 몫을 더한다."""
+    return NODE_BUDGET_SEC + (LOAD_BUDGET_SEC if cold else 0)
+
+
+def over_budget(elapsed, first_chunk_sec, chunks, budget):
+    """첫 묶음을 칠한 뒤 남은 묶음까지의 어림(초)이 예산을 넘으면 그 어림, 아니면 None."""
+    estimate = elapsed + first_chunk_sec * (chunks - 1) * 1.1
+    return estimate if estimate > budget else None
+
+
+def chunk14(frames, size=CHUNK, overlap=OVERLAP):
+    """프레임 목록 → size 장씩 묶은 목록. 다음 묶음은 앞 묶음의 끝 overlap 장부터 시작한다(겹쳐 칠한다).
+
+    마지막 묶음이 모자라면 끝 프레임을 반복해 채운다.
+    """
     frames = list(frames)
     out = []
-    for i in range(0, len(frames), size):
+    for i in range(0, max(len(frames) - overlap, 1), size - overlap):
         part = frames[i : i + size]
         out.append(part + [part[-1]] * (size - len(part)))
     return out
 
 
-def stitch(parts, count):
-    """묶음마다 칠한 결과를 잇고 원래 프레임 수로 자른다(채운 끝 프레임을 뺀다)."""
-    return [f for part in parts for f in part][:count]
+def stitch(parts, count, overlap=OVERLAP, blend=None):
+    """묶음마다 칠한 결과를 잇고 원래 프레임 수로 자른다(채운 끝 프레임을 뺀다).
+
+    겹쳐 칠한 프레임은 앞 묶음 결과와 뒤 묶음 결과를 섞는다 — blend(앞, 뒤, 뒤 몫), 기본은 PIL Image.blend.
+    """
+    if blend is None:
+        from PIL import Image
+
+        blend = Image.blend
+    out = list(parts[0])
+    for part in parts[1:]:
+        for j in range(overlap):
+            out[j - overlap] = blend(out[j - overlap], part[j], (j + 1) / (overlap + 1))
+        out.extend(part[overlap:])
+    return out[:count]
 
 
 def fit_box(width, height, box_w=WIDTH, box_h=HEIGHT):
@@ -112,14 +142,22 @@ def fit_box(width, height, box_w=WIDTH, box_h=HEIGHT):
     return w, h, (box_w - w) // 2, (box_h - h) // 2
 
 
-def line_to_sketch(gray):
-    """선화 프레임(회색조 uint8 (h, w)) → AniDoc 선화 조건(흰 바탕 255 · 검은 선 0). 검은 바탕에 흰 선이면 뒤집는다."""
+def line_to_sketch(gray, box=None):
+    """선화 프레임(회색조 uint8 (h, w)) → AniDoc 선화 조건(흰 바탕 255 · 검은 선 0).
+
+    검은 바탕에 흰 선이면 뒤집는다. box(fit_box 의 (w, h, 왼쪽, 위))를 주면 흰 여백을 빼고 그림 부분만 보고 판단하고
+    그림 부분만 뒤집는다(여백은 흰색 그대로).
+    """
     import numpy as np
 
-    gray = np.asarray(gray, dtype=np.uint8)
-    if gray.mean() < 128:
-        gray = 255 - gray
-    return ((gray > LINE_THRESHOLD).astype(np.uint8) * 255)
+    gray = np.array(gray, dtype=np.uint8)
+    if box is None:
+        box = (gray.shape[1], gray.shape[0], 0, 0)
+    w, h, left, top = box
+    content = gray[top : top + h, left : left + w]
+    if content.size and content.mean() < 128:
+        gray[top : top + h, left : left + w] = 255 - content
+    return (gray > LINE_THRESHOLD).astype(np.uint8) * 255
 
 
 def is_oom(exc):
@@ -136,6 +174,10 @@ def oom_message(have_mb, need_mb=NEED_MB):
         f"그래픽카드 메모리가 모자랍니다(선화 채색 약 {need_mb / 1024:.0f} GB 필요, 이 PC {have})."
         " 다른 프로그램(게임 · 다른 AI)을 닫고 다시 해 보세요."
     )
+
+
+def ram_message():
+    return "컴퓨터 메모리(RAM)가 모자랍니다. 다른 프로그램을 닫거나 영상을 짧게 잘라 다시 해 보세요."
 
 
 def cpu_message():
@@ -184,6 +226,8 @@ def _pipeline(ctx):
     offload = _vram_mb() < FULL_GPU_MB
     if _CACHE["pipe"] is not None and _CACHE["offload"] == offload:
         return _CACHE["pipe"]
+    _CACHE.update(pipe=None, offload=None)  # 앞 파이프라인(있으면)을 놓고 나서 새로 만든다
+    _free_cuda()
     import torch
     from models_diffusers.controlnet_svd import ControlNetSVDModel
     from models_diffusers.unet_spatio_temporal_condition import UNetSpatioTemporalConditionModel
@@ -211,6 +255,7 @@ def _pipeline(ctx):
     # 공식 코드처럼 직접 그래픽카드에 둔다(fp16 약 1.4GB).
     controlnet.to("cuda")
     _CACHE.update(pipe=pipe, offload=offload)
+    _STATE["loaded_once"] = True
     return pipe
 
 
@@ -218,6 +263,7 @@ def _aux(ctx):
     """선화 추출 · 점 찾기 · 점 맞추기 · 점 따라가기 모델(작다 — 그래픽카드에 둔다)."""
     if _CACHE["aux"] is not None:
         return _CACHE["aux"]
+    _free_cuda()
     import torch
     from cotracker.predictor import CoTrackerPredictor
     from lightglue import LightGlue, SuperPoint
@@ -235,14 +281,17 @@ def _aux(ctx):
 
 
 def _read_video(path):
-    """영상 → (RGB PIL 프레임 목록, fps 분수). 화면 회전 정보는 돌려서 보이는 방향으로. 길이 상한을 넘으면 한국어 오류."""
+    """영상 → (512×320 에 흰 여백으로 맞춘 RGB PIL 프레임 목록, fit_box, fps 분수).
+
+    읽는 대로 줄여 둔다(원본 크기 프레임을 쌓지 않는다). 화면 회전 정보는 돌려서 보이는 방향으로. 길이 상한을 넘으면 한국어 오류.
+    """
     from fractions import Fraction
 
     import av
     import numpy as np
     from PIL import Image
 
-    frames = []
+    frames, box = [], None
     with av.open(path) as container:
         if not container.streams.video:
             raise ValueError(f"'{LABEL_VIDEO}'에 영상이 없습니다. 영상 파일을 이어 주세요.")
@@ -253,7 +302,9 @@ def _read_video(path):
             rot = int(round((getattr(frame, "rotation", 0) or 0) / 90.0)) % 4
             if rot:
                 arr = np.ascontiguousarray(np.rot90(arr, rot))
-            frames.append(Image.fromarray(arr))
+            if box is None:
+                box = fit_box(arr.shape[1], arr.shape[0])
+            frames.append(_letterbox(Image.fromarray(arr), box))
             if len(frames) > MAX_FRAMES:
                 break
         total = len(frames)
@@ -267,7 +318,7 @@ def _read_video(path):
     problem = check_length(total, float(rate))
     if problem:
         raise ValueError(problem)
-    return frames, Fraction(rate).limit_denominator(1001)
+    return frames, box, Fraction(rate).limit_denominator(1001)
 
 
 def _letterbox(img, box):
@@ -294,15 +345,15 @@ def _open_reference(path):
     return _letterbox(im, fit_box(*im.size))
 
 
-def _sketches(frames, source, detector):
-    """프레임(512×320 PIL) → 선화 조건 PIL(흰 바탕 검은 선, RGB)."""
+def _sketches(frames, source, detector, box):
+    """프레임(512×320 PIL) → 선화 조건 PIL(흰 바탕 검은 선, RGB). box 는 흰 여백 안 그림 자리(fit_box)."""
     import numpy as np
     from PIL import Image
 
     out = []
     for img in frames:
         if source == "line":
-            sketch = line_to_sketch(np.array(img.convert("L")))
+            sketch = line_to_sketch(np.array(img.convert("L")), box)
         else:
             line = detector(np.array(img), coarse=False)
             sketch = (line > LINE_THRESHOLD).astype(np.uint8) * 255  # 공식 코드 그대로
@@ -387,10 +438,12 @@ def colorize(ctx, inputs, settings):
     if seed < 0:
         seed = random.randint(0, 2**31 - 1)
 
-    frames, fps = _read_video(inputs["video"])
-    box = fit_box(*frames[0].size)
-    frames = [_letterbox(f, box) for f in frames]
-    ref_image = _open_reference(inputs["reference"])
+    try:
+        frames, box, fps = _read_video(inputs["video"])
+        ref_image = _open_reference(inputs["reference"])
+    except MemoryError:
+        frames = None
+        raise ValueError(ram_message()) from None
     count = len(frames)
     parts = chunk14(frames)
     ctx.log(f"{count} frames @ {float(fps):.3f}fps → {len(parts)} chunk(s), source={source}, seed={seed}")
@@ -399,7 +452,8 @@ def colorize(ctx, inputs, settings):
     import numpy as np
     import torch
 
-    results, out = [], None
+    results, out, cond, pipe, aux = [], None, None, None, None
+    cold = not _STATE["loaded_once"]
     try:
         pipe = _pipeline(ctx)
         aux = _aux(ctx)
@@ -416,10 +470,11 @@ def colorize(ctx, inputs, settings):
 
         for k, part in enumerate(parts):
             ctx.check_cancel()
-            random.seed(seed + k)
-            np.random.seed((seed + k) % (2**32))
-            torch.manual_seed(seed + k)
-            sketches = _sketches(part, source, aux[0])
+            # 모든 묶음에 같은 시드(코드 검토 — 묶음마다 시드가 다르면 경계에서 색이 더 튄다)
+            random.seed(seed)
+            np.random.seed(seed % (2**32))
+            torch.manual_seed(seed)
+            sketches = _sketches(part, source, aux[0], box)
             cond = _condition(sketches, ref_image, aux)
             torch.cuda.empty_cache()  # 점 따라가기가 잡아 둔 캐시를 놓고 생성으로 — 12GB 에서 최고치를 낮춘다
             video = pipe(
@@ -433,18 +488,19 @@ def colorize(ctx, inputs, settings):
                 motion_bucket_id=127,
                 fps=7,
                 noise_aug_strength=0.02,
-                generator=torch.manual_seed(seed + k),
+                generator=torch.manual_seed(seed),
                 callback_on_step_end=on_step,
             ).frames[0]
             results.append(video)
-            del cond
+            cond = None
             if k == 0 and len(parts) > 1:
                 per = time.monotonic() - loop_start
-                estimate = (time.monotonic() - t0) + per * (len(parts) - 1) * 1.1
-                ctx.log(f"chunk 1/{len(parts)} in {per:.1f}s, estimate {estimate:.0f}s")
-                if estimate > TIME_BUDGET_SEC:
+                budget = time_budget(cold)
+                estimate = over_budget(time.monotonic() - t0, per, len(parts), budget)
+                ctx.log(f"chunk 1/{len(parts)} in {per:.1f}s, budget {budget}s, over={estimate}")
+                if estimate:
                     raise ValueError(
-                        f"이 PC 에서는 약 {math.ceil(estimate / 60)}분이 걸려 한 번에 돌 수 있는 시간(약 {TIME_BUDGET_SEC // 60}분)을"
+                        f"이 PC 에서는 약 {math.ceil(estimate / 60)}분이 걸려 한 번에 돌 수 있는 시간(약 {budget // 60}분)을"
                         " 넘습니다. 영상을 짧게 잘라 이어 주세요."
                     )
         ctx.progress(0.96, "encode")
@@ -459,21 +515,23 @@ def colorize(ctx, inputs, settings):
                 f.save(path)
                 out["frames"].append(path)
         ctx.log(f"done in {time.monotonic() - t0:.1f}s, peak {torch.cuda.max_memory_allocated() // (1024 * 1024)}MB allocated")
+    except MemoryError:
+        failure = "ram"
     except Exception as exc:  # noqa: BLE001 - 메모리 부족만 쉬운 말로 바꾸고 나머지는 그대로 올린다
         if not is_oom(exc):
             raise
-        oom = True
+        failure = "vram"
     else:
-        oom = False
+        failure = None
     finally:
         _free_cuda()
-    if oom:
+    if failure:
         # except 블록 밖에서 정리하고 새 오류를 낸다 — 블록 안에서 내면 원래 오류(와 그 프레임이 쥔 그래픽카드 텐서)가
-        # 새 오류의 __context__ 로 남아 사이드카가 다음 실행까지 메모리를 놓지 못한다.
+        # 새 오류의 __context__ 로 남아 사이드카가 다음 실행까지 메모리를 놓지 못한다. 지역 변수가 쥔 모델 · 텐서도 놓는다.
         _CACHE.update(pipe=None, offload=None, aux=None)
-        results = None
+        pipe = aux = cond = results = frames = None
         _free_cuda()
-        raise RuntimeError(oom_message(_vram_mb()))
+        raise RuntimeError(oom_message(_vram_mb()) if failure == "vram" else ram_message())
     ctx.progress(1.0, "done")
     return out
 

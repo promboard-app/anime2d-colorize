@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "id": "promboard.anime2d-colorize",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "2D 애니메이션 팩 — 선화 채색 (AniDoc)",
   "description": "2D 애니메이션 팩은 세 장으로 나뉩니다 — 이 카드(선화 채색)와 '2D 애니메이션 팩 — 프레임 사이 채우기' · '2D 애니메이션 팩 — 키프레임으로 채색 영상'. 선화 영상(또는 컬러 영상)을 캐릭터 설정화 1장의 색으로 칠한 영상(512×320)으로 만든다. 공개 모델 AniDoc(CVPR 2025, Stable Video Diffusion 미세조정)과 점 맞추기(SuperPoint · LightGlue) · 점 따라가기(CoTracker2)를 원래 출처에서 받는다(약 10.6GB). NVIDIA 그래픽카드 8GB 이상, 윈도우 · 리눅스. 예제 그림 3장과 예제 워크플로우 1개가 들어 있다. CoTracker · SuperPoint 가 비상업 라이선스라 결과물에 비상업 표시가 붙는다. Powered by Stability AI.",
   "author": "PromBoard",
@@ -26,7 +26,7 @@
     {
       "id": "colorize",
       "label": "2D 애니메이션 · 선화 채색",
-      "description": "결과는 512×320 안에 맞춘 영상(입력 비율 · fps 그대로)과 그 프레임(64프레임 이하일 때). 캐릭터 설정화 1장의 색으로 선화 영상(또는 컬러 영상)을 14프레임씩 나눠 칠하고 잇는다. 영상은 240프레임(24fps 10초)까지, 14프레임에 약 20초(RTX 4070 SUPER). 그래픽카드 16GB 보다 작으면 일부를 컴퓨터 메모리로 넘겨 돌아서 느립니다. NVIDIA 그래픽카드 8GB 이상.",
+      "description": "결과는 512×320 안에 맞춘 영상(입력 비율 · fps 그대로)과 그 프레임(64프레임 이하일 때). 캐릭터 설정화 1장의 색으로 선화 영상(또는 컬러 영상)을 14프레임씩(이웃 묶음은 1프레임 겹쳐) 나눠 칠하고 잇는다. 영상은 240프레임(24fps 10초)까지, 14프레임에 약 20초(RTX 4070 SUPER). 그래픽카드 16GB 보다 작으면 일부를 컴퓨터 메모리로 넘겨 돌아서 느립니다. NVIDIA 그래픽카드 8GB 이상.",
       "layout": "auto",
       "showSources": true,
       "sources": [
@@ -184,7 +184,7 @@
         "source": "huggingface",
         "repo": "lllyasviel/Annotators",
         "revision": "982e7edaec38759d914a963c48c4726685de7d96",
-        "license": "MIT",
+        "license": "LicenseRef-HF-other",
         "files": [
           {
             "path": "sk_model.pth",

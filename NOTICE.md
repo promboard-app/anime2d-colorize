@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 | lastUpdated: 2026-10-31 -->
+<!-- version: 1.0.1 | lastUpdated: 2026-10-31 -->
 # NOTICE — 담아 온 코드 · 받는 모델 · 고친 곳
 
 이 플러그인의 PromBoard 코드(`nodes/main.py` · `tests/`)는 Apache-2.0 이다(`LICENSE`). 아래 상류 코드를 함께 담았고, 각 폴더의 라이선스를 따른다.
@@ -19,7 +19,7 @@
 |---|---|---|
 | AniDoc unet · controlnet | HF `Yhmeng1106/anidoc` | 저장소 표기 MIT. Stable Video Diffusion 미세조정본이라 Stability AI Community License 도 따른다 |
 | SVD img2vid-xt image_encoder · vae (fp16) · 설정 | HF `stabilityai/stable-video-diffusion-img2vid-xt` | [Stability AI Community License](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt/blob/9e43909513c6714f1bc78bcb44d96e733cd242aa/LICENSE.md) |
-| `sk_model.pth` (선화 뽑기) | HF `lllyasviel/Annotators` | informative-drawings 가중치(MIT) |
+| `sk_model.pth` (선화 뽑기) | HF `lllyasviel/Annotators` | HF 저장소 표기는 other(`LicenseRef-HF-other`). 원 출처는 [carolineec/informative-drawings](https://github.com/carolineec/informative-drawings)(MIT) 가중치 |
 | `cotracker2.pth` | HF `facebook/cotracker` | CC-BY-NC-4.0 |
 | `superpoint_v1.pth` | GitHub `cvg/LightGlue` 릴리스 `v0.1_arxiv` | SuperPoint 라이선스(비상업 연구용) |
 | `superpoint_lightglue.pth` | 위와 같음 | Apache-2.0 |
@@ -32,6 +32,6 @@ This Stability AI Model is licensed under the Stability AI Community License, Co
 - `nodes/anidoc/models_diffusers/unet_spatio_temporal_condition.py` — 오류 문구의 패키지 설치 안내 한 줄을 뺐다(PromBoard 레지스트리 검사가 실행 중 설치로 읽는다).
 - `nodes/anidoc/utils.py` — scikit-image · moviepy 를 쓰는 함수 안에서 불러온다(moviepy 2.x 꼴 `from moviepy import ImageSequenceClip`). PromBoard 노드는 그 함수를 부르지 않아 두 패키지를 설치하지 않는다.
 - `nodes/cotracker/models/build_cotracker.py` — `torch.load(경로, weights_only=True, mmap=True)`.
-- `nodes/lightglue/superpoint.py` · `lightglue.py` — `torch.hub` 로 받던 가중치를 설정 `weights_path` 의 경로에서 `torch.load(weights_only=True, mmap=True)` 로 읽는다.
+- `nodes/lightglue/superpoint.py` · `lightglue.py` — `torch.hub` 로 받던 가중치를 설정 `weights_path` 의 경로에서 읽는다. `lightglue.py` 는 `torch.load(weights_only=True, mmap=True)`, `superpoint.py` 는 `superpoint_v1.pth` 가 옛 저장 형식(zip 아님)이라 mmap 없이 `torch.load(weights_only=True)`.
 - 쓰지 않는 AniDoc 파일(`models_diffusers/` 의 adapter_model · mutual_self_attention · refUnet · unet_..._interp, `scripts_infer/`, `datasets/`, `lineart_extractor` 의 canny · hed · lineart_anime)과 LightGlue 예제 · 그림은 담지 않았다.
 - 추론 스크립트(`scripts_infer/anidoc_inference.py`)는 담지 않고, 그 조건 만들기(`--all_sketch --matching --tracking --max_point 10`)를 `nodes/main.py` 의 `_condition` 으로 옮겼다. xformers 가 없으면 멈추던 곳(117–123행)은 옮기지 않아 diffusers 기본 어텐션(torch SDPA)으로 돈다.
