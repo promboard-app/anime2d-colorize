@@ -69,6 +69,7 @@ PromBoard 커뮤니티 플러그인입니다. 선화 영상(또는 컬러 영상
 | 키프레임으로 채색 영상 | 각 저장소 README | 각 저장소 README |
 
 - 채색 노드를 한 번이라도 거친 결과물에는 PromBoard 가 '비상업' 표시를 붙입니다.
+- 저장소의 LICENSE(Apache-2.0)는 PromBoard 코드와 AniDoc 코드 몫입니다. 담아 온 CoTracker · SuperPoint 코드와 받는 모델 때문에 플러그인 전체는 위 표대로 비상업입니다(파일별 라이선스는 [NOTICE.md](NOTICE.md)).
 - 채색 모델 AniDoc 은 Stable Video Diffusion 을 고친 모델이라 Stability AI Community License 도 따릅니다(상업 이용은 연매출 100만 달러 미만만 · Stability AI 에 등록 · 'Powered by Stability AI' 표기 · 결과물로 다른 기반 생성 AI 모델을 만들거나 개선하지 않음). 위의 비상업 조건이 먼저 걸립니다.
 - 이 표는 법률 조언이 아닙니다. 쓰기 전에 링크한 라이선스 원문을 읽어 주세요.
 

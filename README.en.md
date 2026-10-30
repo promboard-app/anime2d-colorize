@@ -69,6 +69,7 @@ The app after running the example workflow. The left panel shows the example car
 | Colored Video from Keyframes | See that repository's README | See that repository's README |
 
 - PromBoard marks every result that went through the colorization node as "Non-commercial".
+- The repository LICENSE (Apache-2.0) covers the PromBoard code and the AniDoc code. Because of the bundled CoTracker and SuperPoint code and the downloaded models, the plugin as a whole is non-commercial as shown above (per-file licenses: [NOTICE.md](NOTICE.md)).
 - The coloring model AniDoc is a fine-tune of Stable Video Diffusion, so the Stability AI Community License applies too (commercial use only under USD 1M annual revenue, registration with Stability AI, "Powered by Stability AI" attribution, no using outputs to build or improve another foundational generative AI model). The non-commercial terms above apply first.
 - This table is not legal advice. Read the linked license texts before use.
 
