@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "cards": [
+    {
+      "kind": "refImage",
+      "id": "example-cont-line-start",
+      "name": "예제 — 이어진 선화 시작 프레임",
+      "file": "cards/cont-line-start.png",
+      "role": "팩 '두 프레임 → 중간 프레임'의 시작 프레임 (채색 예제 워크플로우)",
+      "tags": ["2D 애니메이션", "선화", "예제"]
+    },
+    {
+      "kind": "refImage",
+      "id": "example-cont-line-end",
+      "name": "예제 — 이어진 선화 끝 프레임",
+      "file": "cards/cont-line-end.png",
+      "role": "팩 '두 프레임 → 중간 프레임'의 끝 프레임 (채색 예제 워크플로우)",
+      "tags": ["2D 애니메이션", "선화", "예제"]
+    },
+    {
+      "kind": "refImage",
+      "id": "example-character-sheet",
+      "name": "예제 — 캐릭터 설정화",
+      "file": "cards/character-sheet.jpg",
+      "role": "선화 채색의 캐릭터 설정화 (정면 전신 · 평면 채색)",
+      "tags": ["2D 애니메이션", "채색", "예제"]
+    }
+  ]
+}

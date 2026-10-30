@@ -1,0 +1,15 @@
+torch==2.8.0
+torchvision==0.23.0
+torchaudio==2.8.0
+diffusers==0.24.0
+transformers==4.27.0
+huggingface_hub==0.24.7
+accelerate==0.27.2
+safetensors
+einops
+kornia
+numpy==1.26.4
+opencv-python-headless==4.10.0.84
+av
+pillow
+packaging

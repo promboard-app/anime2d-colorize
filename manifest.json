@@ -1,0 +1,227 @@
+{
+  "schema": 1,
+  "id": "promboard.anime2d-colorize",
+  "version": "1.0.0",
+  "name": "2D 애니메이션 팩 — 선화 채색 (AniDoc)",
+  "description": "2D 애니메이션 팩은 세 장으로 나뉩니다 — 이 카드(선화 채색)와 '2D 애니메이션 팩 — 프레임 사이 채우기' · '2D 애니메이션 팩 — 키프레임으로 채색 영상'. 선화 영상(또는 컬러 영상)을 캐릭터 설정화 1장의 색으로 칠한 영상(512×320)으로 만든다. 공개 모델 AniDoc(CVPR 2025, Stable Video Diffusion 미세조정)과 점 맞추기(SuperPoint · LightGlue) · 점 따라가기(CoTracker2)를 원래 출처에서 받는다(약 10.6GB). NVIDIA 그래픽카드 8GB 이상, 윈도우 · 리눅스. 예제 그림 3장과 예제 워크플로우 1개가 들어 있다. CoTracker · SuperPoint 가 비상업 라이선스라 결과물에 비상업 표시가 붙는다. Powered by Stability AI.",
+  "author": "PromBoard",
+  "license": "Apache-2.0 AND MIT AND CC-BY-NC-4.0 AND LicenseRef-SuperPoint-NC",
+  "nonCommercial": true,
+  "licenseNotice": {
+    "conditions": "점 따라가기 CoTracker(코드 · 가중치 CC-BY-NC-4.0)와 점 찾기 SuperPoint(Magic Leap 비상업 연구용 라이선스)가 비상업이라 판매 · 광고 · 유료 서비스에 쓸 수 없다. 채색 모델 AniDoc 은 Stable Video Diffusion 미세조정본이라 Stability AI Community License 도 따른다: 상업 이용은 연매출 100만 달러 미만만 · Stability AI 에 등록 · 'Powered by Stability AI' 표기, 결과물로 다른 기반 생성 AI 모델을 만들거나 개선하지 않는다.",
+    "url": "https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt/blob/9e43909513c6714f1bc78bcb44d96e733cd242aa/LICENSE.md"
+  },
+  "app": ">=1.0.3",
+  "categories": [
+    "videoGenerate"
+  ],
+  "repository": "https://github.com/promboard-app/anime2d-colorize",
+  "icon": "icon.png",
+  "contents": [
+    "nodes",
+    "cards",
+    "workflows"
+  ],
+  "nodes": [
+    {
+      "id": "colorize",
+      "label": "2D 애니메이션 · 선화 채색",
+      "description": "결과는 512×320 안에 맞춘 영상(입력 비율 · fps 그대로)과 그 프레임(64프레임 이하일 때). 캐릭터 설정화 1장의 색으로 선화 영상(또는 컬러 영상)을 14프레임씩 나눠 칠하고 잇는다. 영상은 240프레임(24fps 10초)까지, 14프레임에 약 20초(RTX 4070 SUPER). 그래픽카드 16GB 보다 작으면 일부를 컴퓨터 메모리로 넘겨 돌아서 느립니다. NVIDIA 그래픽카드 8GB 이상.",
+      "layout": "auto",
+      "showSources": true,
+      "sources": [
+        "video",
+        "reference"
+      ],
+      "views": [
+        "frameStrip"
+      ],
+      "inputs": [
+        {
+          "id": "video",
+          "type": "video",
+          "label": "색칠할 영상",
+          "required": true
+        },
+        {
+          "id": "reference",
+          "type": "image",
+          "label": "캐릭터 설정화",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "video",
+          "type": "video",
+          "label": "채색 영상"
+        },
+        {
+          "id": "frames",
+          "type": "image",
+          "label": "프레임 (영상이 64프레임 이하일 때)",
+          "multiple": true
+        }
+      ],
+      "settings": [
+        {
+          "id": "source",
+          "label": "색칠할 영상 종류",
+          "help": "컬러 영상: 프레임마다 선화를 먼저 뽑아 칠한다(처음 값, 선화 영상을 넣어도 된다). 선화 영상: 흰 바탕 검은 선 영상의 선을 그대로 써서 원래 선을 살린다. 색은 캐릭터 설정화를 따른다.",
+          "type": "select",
+          "options": [
+            {
+              "value": "color",
+              "label": "컬러 영상 (선화를 뽑아서 칠함)"
+            },
+            {
+              "value": "line",
+              "label": "선화 영상 (그대로 칠함)"
+            }
+          ],
+          "default": "color"
+        },
+        {
+          "id": "seed",
+          "label": "시드",
+          "help": "-1 이면 매번 다른 결과.",
+          "type": "integer",
+          "default": -1,
+          "min": -1,
+          "max": 2147483647
+        }
+      ]
+    }
+  ],
+  "python": {
+    "version": "3.11",
+    "torch": "host",
+    "lock": {
+      "win": "nodes/requirements-win.txt",
+      "linux": "nodes/requirements-linux.txt"
+    },
+    "entry": "nodes.main"
+  },
+  "gpu": {
+    "vramMinMb": 8192,
+    "cpuAllowed": false
+  },
+  "permissions": {},
+  "requires": {
+    "models": [
+      {
+        "source": "huggingface",
+        "repo": "Yhmeng1106/anidoc",
+        "revision": "cd1d29fcab5e86fefb3d12d090f9630465f05185",
+        "license": "MIT AND LicenseRef-Stability-AI-Community",
+        "files": [
+          {
+            "path": "anidoc/unet/config.json",
+            "bytes": 900,
+            "sha256": "fb654c955a1fcf350adf62ae7eecac157897d34d05e22c6b89f52a46836b2d02"
+          },
+          {
+            "path": "anidoc/unet/diffusion_pytorch_model.safetensors",
+            "bytes": 6098682464,
+            "sha256": "ad406fa3769b23b7dcbeae09c9191143f4fffa87c0a568163ebf568fd6465336"
+          },
+          {
+            "path": "anidoc/controlnet/config.json",
+            "bytes": 1044,
+            "sha256": "be278c13986dd75c48aae4184541e8bc1301a554daa42f89dd9bad5773eb5f6d"
+          },
+          {
+            "path": "anidoc/controlnet/diffusion_pytorch_model.safetensors",
+            "bytes": 2728177092,
+            "sha256": "57477c3d3a6cebd3ca039d3dbcf4e9773e725ad5ded8ee67a5acf20d8a5f362f"
+          }
+        ]
+      },
+      {
+        "source": "huggingface",
+        "repo": "stabilityai/stable-video-diffusion-img2vid-xt",
+        "revision": "9e43909513c6714f1bc78bcb44d96e733cd242aa",
+        "license": "LicenseRef-Stability-AI-Community",
+        "files": [
+          {
+            "path": "model_index.json",
+            "bytes": 496,
+            "sha256": "9119b8837600736ae38009c5dc80c76112307cb2d229a2cfb477d54c329ff53d"
+          },
+          {
+            "path": "feature_extractor/preprocessor_config.json",
+            "bytes": 518,
+            "sha256": "4db495644e3e5bd8fcac52f70e7fc0b413c911086021acf73ac30e5911166e95"
+          },
+          {
+            "path": "image_encoder/config.json",
+            "bytes": 685,
+            "sha256": "65da4496f116d2b297fe864e0f31242fbc57e26a5d95b93310f2034e1e90d0ec"
+          },
+          {
+            "path": "image_encoder/model.fp16.safetensors",
+            "bytes": 1264217240,
+            "sha256": "ae616c24393dd1854372b0639e5541666f7521cbe219669255e865cb7f89466a"
+          },
+          {
+            "path": "scheduler/scheduler_config.json",
+            "bytes": 533,
+            "sha256": "59aa43afc33395efd40fe94c7369c0477b81698f4b65b63e3ae06f26269876d5"
+          },
+          {
+            "path": "vae/config.json",
+            "bytes": 607,
+            "sha256": "8f34272db69f7e2c615da6142ca3f9fdcd7b682bcfd903ceb15035fea79a8303"
+          },
+          {
+            "path": "vae/diffusion_pytorch_model.fp16.safetensors",
+            "bytes": 195531910,
+            "sha256": "af602cd0eb4ad6086ec94fbf1438dfb1be5ec9ac03fd0215640854e90d6463a3"
+          }
+        ]
+      },
+      {
+        "source": "huggingface",
+        "repo": "lllyasviel/Annotators",
+        "revision": "982e7edaec38759d914a963c48c4726685de7d96",
+        "license": "MIT",
+        "files": [
+          {
+            "path": "sk_model.pth",
+            "bytes": 17173511,
+            "sha256": "c686ced2a666b4850b4bb6ccf0748031c3eda9f822de73a34b8979970d90f0c6"
+          }
+        ]
+      },
+      {
+        "source": "huggingface",
+        "repo": "facebook/cotracker",
+        "revision": "60495999ebd33af25fc51d89f83d1d6de3bc18a5",
+        "license": "CC-BY-NC-4.0",
+        "files": [
+          {
+            "path": "cotracker2.pth",
+            "bytes": 204396415,
+            "sha256": "362f5274376d610dc987b6daf2c2fefe63e06e1835f4ec1a10d0a15c5a4eef4f"
+          }
+        ]
+      },
+      {
+        "source": "url",
+        "url": "https://github.com/cvg/LightGlue/releases/download/v0.1_arxiv/superpoint_v1.pth",
+        "path": "lightglue/superpoint_v1.pth",
+        "bytes": 5206086,
+        "sha256": "52b6708629640ca883673b5d5c097c4ddad37d8048b33f09c8ca0d69db12c40e",
+        "license": "LicenseRef-SuperPoint-NC"
+      },
+      {
+        "source": "url",
+        "url": "https://github.com/cvg/LightGlue/releases/download/v0.1_arxiv/superpoint_lightglue.pth",
+        "path": "lightglue/superpoint_lightglue.pth",
+        "bytes": 47500279,
+        "sha256": "6ff7040d0a497fc6639337946d7538dae07428c18f77a067a0b5a960e7cc551a",
+        "license": "Apache-2.0"
+      }
+    ]
+  }
+}

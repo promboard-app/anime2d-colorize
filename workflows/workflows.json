@@ -1,0 +1,387 @@
+{
+  "schema": 1,
+  "workflows": [
+    {
+      "id": "line-inbetween-colorize",
+      "name": "이어진 선화 두 장 → 중간 프레임 → 선화 채색",
+      "description": "에셋 탭의 예제 카드를 소스 노드 위에 끌어 놓는다: '이어진 선화 시작 프레임' · '이어진 선화 끝 프레임' · '캐릭터 설정화'. 그다음 '프레임 사이 채우기' 노드 ▷(14프레임 선화 영상), '선화 채색' 노드 ▷ 를 차례로 누른다(시드 1, 바꾸면 색이 달라진다). 첫 노드는 팩 카드라 없으면 '누락된 플러그인 설치'로 받는다. 내 선화 영상이 있으면 소스 영상 노드를 '선화 채색'에 바로 이어도 된다.",
+      "thumbnail": "workflows/line-inbetween-colorize.jpg",
+      "nodes": [
+        {
+          "id": "line-start",
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "selectedTermIds": [],
+          "isStale": false,
+          "type": "sourceImage",
+          "images": [],
+          "nodeType": "sourceImage",
+          "pendingUploads": [],
+          "inputWires": [],
+          "outputWires": []
+        },
+        {
+          "id": "line-end",
+          "position": {
+            "x": 0,
+            "y": 340
+          },
+          "selectedTermIds": [],
+          "isStale": false,
+          "type": "sourceImage",
+          "images": [],
+          "nodeType": "sourceImage",
+          "pendingUploads": [],
+          "inputWires": [],
+          "outputWires": []
+        },
+        {
+          "id": "sheet",
+          "position": {
+            "x": 380,
+            "y": 560
+          },
+          "selectedTermIds": [],
+          "isStale": false,
+          "type": "sourceImage",
+          "images": [],
+          "nodeType": "sourceImage",
+          "pendingUploads": [],
+          "inputWires": [],
+          "outputWires": []
+        },
+        {
+          "id": "fill",
+          "position": {
+            "x": 380,
+            "y": 60
+          },
+          "selectedTermIds": [],
+          "isStale": false,
+          "type": "promboard.anime2d/fill",
+          "plugin": {
+            "id": "promboard.anime2d",
+            "nodeId": "fill"
+          },
+          "snapshot": {
+            "plugin": "promboard.anime2d",
+            "id": "fill",
+            "label": "2D 애니메이션 · 프레임 사이 채우기",
+            "layout": "auto",
+            "showSources": true,
+            "sources": [
+              "start",
+              "end",
+              "video"
+            ],
+            "views": [
+              "frameStrip"
+            ],
+            "inputs": [
+              {
+                "id": "start",
+                "type": "image",
+                "label": "시작 프레임",
+                "required": false
+              },
+              {
+                "id": "end",
+                "type": "image",
+                "label": "끝 프레임",
+                "required": false
+              },
+              {
+                "id": "video",
+                "type": "video",
+                "label": "늘릴 영상",
+                "required": false
+              },
+              {
+                "id": "prompt",
+                "type": "text",
+                "label": "프롬프트 (영어 · 두 프레임 → 영상만)",
+                "required": false
+              }
+            ],
+            "outputs": [
+              {
+                "id": "video",
+                "type": "video",
+                "label": "영상"
+              },
+              {
+                "id": "frames",
+                "type": "image",
+                "label": "프레임 (여러 장)",
+                "multiple": true
+              }
+            ],
+            "settings": [
+              {
+                "id": "mode",
+                "label": "모드",
+                "help": "자세가 크게 바뀌면 '두 프레임 → 영상'(AI 가 움직임을 새로 그림, 몇 분), 이어진 두 프레임이면 '중간 프레임'(사이만 채움, 빠름). 두 프레임 모드는 시작 · 끝 프레임을, 프레임 늘리기는 늘릴 영상을 잇는다.",
+                "type": "select",
+                "options": [
+                  {
+                    "value": "inbetween",
+                    "label": "두 프레임 → 중간 프레임 (작은 움직임)",
+                    "vramMinMb": 4096
+                  },
+                  {
+                    "value": "tween",
+                    "label": "두 프레임 → 영상 (큰 움직임)",
+                    "vramMinMb": 10240
+                  },
+                  {
+                    "value": "smooth",
+                    "label": "영상 → 프레임 늘리기",
+                    "vramMinMb": 4096
+                  }
+                ],
+                "default": "inbetween"
+              },
+              {
+                "id": "count",
+                "label": "중간 프레임 수 (중간 프레임)",
+                "help": "시작과 끝 사이에 넣을 프레임 수. 영상은 시작 · 끝을 더해 12fps 로 잇는다(10장이면 12장, 1초).",
+                "type": "integer",
+                "default": 7,
+                "min": 1,
+                "max": 30
+              },
+              {
+                "id": "motion",
+                "label": "움직임 크기 (두 프레임 → 영상)",
+                "help": "크게일수록 두 프레임 사이를 큰 움직임으로 그린다(ToonCrafter frame_stride 5 · 10 · 20). 결과가 거의 안 움직이면 크게, 너무 출렁이면 작게.",
+                "type": "select",
+                "options": [
+                  {
+                    "value": "small",
+                    "label": "작게"
+                  },
+                  {
+                    "value": "normal",
+                    "label": "보통"
+                  },
+                  {
+                    "value": "large",
+                    "label": "크게"
+                  }
+                ],
+                "default": "normal"
+              },
+              {
+                "id": "fit",
+                "label": "비율 맞추기 (두 프레임 → 영상)",
+                "help": "가로 16:10 그림이 가장 잘 됩니다. 여백 넣기는 그림을 다 보이게 512×320 에 넣고 결과에서 여백을 잘라 낸다. 가운데 자르기는 512×320 을 꽉 채운다.",
+                "type": "select",
+                "options": [
+                  {
+                    "value": "pad",
+                    "label": "여백 넣기 (안 잘림)"
+                  },
+                  {
+                    "value": "crop",
+                    "label": "가운데 자르기"
+                  }
+                ],
+                "default": "pad"
+              },
+              {
+                "id": "factor",
+                "label": "배수 (프레임 늘리기)",
+                "help": "fps 를 몇 배로 늘릴지. 길이 · 속도 · 소리는 그대로다(24fps ×2 = 48fps). 영상은 원래 프레임 480장까지(24fps 면 20초, 30fps 면 16초 · 그래픽카드 없이 돌면 240장).",
+                "type": "select",
+                "options": [
+                  {
+                    "value": "x2",
+                    "label": "×2"
+                  },
+                  {
+                    "value": "x3",
+                    "label": "×3"
+                  }
+                ],
+                "default": "x2"
+              },
+              {
+                "id": "repeats",
+                "label": "반복 프레임 (프레임 늘리기)",
+                "help": "2D 애니는 한 그림을 2~3프레임씩 보여 줍니다. 건너뛰기는 같은 그림이 이어진 곳을 건너뛰고 다른 그림 사이를 원래 시각에 맞춰 채운다. 그대로 두기는 이웃 프레임끼리만 채운다.",
+                "type": "select",
+                "options": [
+                  {
+                    "value": "skip",
+                    "label": "건너뛰고 사이 채우기 (매끈하게, 추천)"
+                  },
+                  {
+                    "value": "keep",
+                    "label": "그대로 두기 (원래 끊김 살림)"
+                  }
+                ],
+                "default": "skip"
+              },
+              {
+                "id": "seed",
+                "label": "시드",
+                "help": "-1 이면 매번 다른 결과. 두 프레임 → 영상에만 쓴다(중간 프레임 · 프레임 늘리기는 늘 같은 결과).",
+                "type": "integer",
+                "default": -1,
+                "min": -1,
+                "max": 2147483647
+              }
+            ]
+          },
+          "pluginSettings": {
+            "mode": "inbetween",
+            "count": 12,
+            "motion": "normal",
+            "fit": "pad",
+            "factor": "x2",
+            "repeats": "skip",
+            "seed": -1
+          },
+          "nodeType": "promboard.anime2d/fill",
+          "inputWires": [],
+          "outputWires": [],
+          "outputPick": {}
+        },
+        {
+          "id": "colorize",
+          "position": {
+            "x": 820,
+            "y": 200
+          },
+          "selectedTermIds": [],
+          "isStale": false,
+          "type": "promboard.anime2d-colorize/colorize",
+          "plugin": {
+            "id": "promboard.anime2d-colorize",
+            "nodeId": "colorize"
+          },
+          "snapshot": {
+            "plugin": "promboard.anime2d-colorize",
+            "id": "colorize",
+            "label": "2D 애니메이션 · 선화 채색",
+            "layout": "auto",
+            "showSources": true,
+            "sources": [
+              "video",
+              "reference"
+            ],
+            "views": [
+              "frameStrip"
+            ],
+            "inputs": [
+              {
+                "id": "video",
+                "type": "video",
+                "label": "색칠할 영상",
+                "required": true
+              },
+              {
+                "id": "reference",
+                "type": "image",
+                "label": "캐릭터 설정화",
+                "required": true
+              }
+            ],
+            "outputs": [
+              {
+                "id": "video",
+                "type": "video",
+                "label": "채색 영상"
+              },
+              {
+                "id": "frames",
+                "type": "image",
+                "label": "프레임 (영상이 64프레임 이하일 때)",
+                "multiple": true
+              }
+            ],
+            "settings": [
+              {
+                "id": "source",
+                "label": "색칠할 영상 종류",
+                "help": "컬러 영상: 프레임마다 선화를 먼저 뽑아 칠한다(처음 값, 선화 영상을 넣어도 된다). 선화 영상: 흰 바탕 검은 선 영상의 선을 그대로 써서 원래 선을 살린다. 색은 캐릭터 설정화를 따른다.",
+                "type": "select",
+                "options": [
+                  {
+                    "value": "color",
+                    "label": "컬러 영상 (선화를 뽑아서 칠함)"
+                  },
+                  {
+                    "value": "line",
+                    "label": "선화 영상 (그대로 칠함)"
+                  }
+                ],
+                "default": "color"
+              },
+              {
+                "id": "seed",
+                "label": "시드",
+                "help": "-1 이면 매번 다른 결과.",
+                "type": "integer",
+                "default": -1,
+                "min": -1,
+                "max": 2147483647
+              }
+            ]
+          },
+          "pluginSettings": {
+            "source": "color",
+            "seed": 1
+          },
+          "nodeType": "promboard.anime2d-colorize/colorize",
+          "inputWires": [],
+          "outputWires": [],
+          "outputPick": {}
+        }
+      ],
+      "wires": [
+        {
+          "id": "start-to-fill",
+          "fromNodeId": "line-start",
+          "fromPortId": "source-image-out",
+          "toNodeId": "fill",
+          "toPortId": "in-start",
+          "dataType": "image"
+        },
+        {
+          "id": "end-to-fill",
+          "fromNodeId": "line-end",
+          "fromPortId": "source-image-out",
+          "toNodeId": "fill",
+          "toPortId": "in-end",
+          "dataType": "image"
+        },
+        {
+          "id": "fill-to-colorize",
+          "fromNodeId": "fill",
+          "fromPortId": "out-video",
+          "toNodeId": "colorize",
+          "toPortId": "in-video",
+          "dataType": "video"
+        },
+        {
+          "id": "sheet-to-colorize",
+          "fromNodeId": "sheet",
+          "fromPortId": "source-image-out",
+          "toNodeId": "colorize",
+          "toPortId": "in-reference",
+          "dataType": "image"
+        }
+      ],
+      "plugins": [
+        {
+          "id": "promboard.anime2d",
+          "version": "1.0.1",
+          "sha256": "c9c975ce199880f11b8717f130c6e472de417f3fbc7de66f0ea90dd65f4c49ca"
+        }
+      ]
+    }
+  ]
+}
